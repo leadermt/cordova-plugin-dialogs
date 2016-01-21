@@ -92,6 +92,12 @@ static void soundCompletionCallback(SystemSoundID ssid, void* data);
         if ([dialogType isEqualToString:DIALOG_TYPE_PROMPT]) {
 
             [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+                if (inputStyle == (uint*)2 || inputStyle == (uint*)5) {
+                    textField.keyboardType = UIKeyboardTypeNumberPad;
+                } else {
+                    textField.keyboardType = UIKeyboardTypeAlphabet;
+                }
+                
                 textField.text = defaultText;
             }];
         }
