@@ -6,9 +6,7 @@
  to you under the Apache License, Version 2.0 (the
  "License"); you may not use this file except in compliance
  with the License.  You may obtain a copy of the License at
-
  http://www.apache.org/licenses/LICENSE-2.0
-
  Unless required by applicable law or agreed to in writing,
  software distributed under the License is distributed on an
  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,13 +16,12 @@
  */
 
 #import "CDVNotification.h"
-#import <Cordova/NSDictionary+Extensions.h>
-#import <Cordova/NSArray+Comparisons.h>
 
 #define DIALOG_TYPE_ALERT @"alert"
 #define DIALOG_TYPE_PROMPT @"prompt"
 
 static void soundCompletionCallback(SystemSoundID ssid, void* data);
+static NSMutableArray *alertList = nil;
 
 @implementation CDVNotification
 
@@ -40,112 +37,111 @@ static void soundCompletionCallback(SystemSoundID ssid, void* data);
  */
 - (void)showDialogWithMessage:(NSString*)message title:(NSString*)title buttons:(NSArray*)buttons defaultText:(NSString*)defaultText inputStyle:(NSUInteger*)inputStyle callbackId:(NSString*)callbackId dialogType:(NSString*)dialogType
 {
-
-    NSUInteger count = [buttons count];
+    
+    int count = (int)[buttons count];
 #ifdef __IPHONE_8_0
     if (NSClassFromString(@"UIAlertController")) {
-
+        
         UIAlertController *alertController = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-
+        
         if ([[[UIDevice currentDevice] systemVersion] floatValue] < 8.3) {
-
+            
             CGRect alertFrame = [UIScreen mainScreen].applicationFrame;
-
+            
             if (UIInterfaceOrientationIsLandscape([[UIApplication sharedApplication] statusBarOrientation])) {
                 // swap the values for the app frame since it is now in landscape
                 CGFloat temp = alertFrame.size.width;
                 alertFrame.size.width = alertFrame.size.height;
                 alertFrame.size.height = temp;
             }
-
+            
             alertController.view.frame =  alertFrame;
         }
 
+        __weak CDVNotification* weakNotif = self;
+
         for (int n = 0; n < count; n++) {
+            [alertController addAction:[UIAlertAction actionWithTitle:[buttons objectAtIndex:n]
+                                                                style:UIAlertActionStyleDefault
+                                                              handler:^(UIAlertAction * action)
+            {
+                CDVPluginResult* result;
 
-            UIAlertAction* action = [UIAlertAction actionWithTitle:[buttons objectAtIndex:n] style:UIAlertActionStyleDefault handler:^(UIAlertAction * action)
-                                     {
-                                         CDVPluginResult* result;
+                if ([dialogType isEqualToString:DIALOG_TYPE_PROMPT])
+                {
+                    NSString* value0 = [[alertController.textFields objectAtIndex:0] text];
+                    NSDictionary* info = @{
+                        @"buttonIndex":@(n + 1),
+                        @"input1":(value0 ? value0 : [NSNull null])
+                    };
+                    result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:info];
+                }
+                else
+                {
+                    result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:(int)(n  + 1)];
+                }
 
-                                         if ([dialogType isEqualToString:DIALOG_TYPE_PROMPT]) {
-
-                                             NSString* value0 = [[alertController.textFields objectAtIndex:0] text];
-                                             NSDictionary* info = @{
-                                                                    @"buttonIndex":@(n + 1),
-                                                                    @"input1":(value0 ? value0 : [NSNull null])
-                                                                    };
-                                             result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:info];
-
-                                         } else {
-
-                                             result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:(int)(n  + 1)];
-
-                                         }
-
-                                         [self.commandDelegate sendPluginResult:result callbackId:callbackId];
-
-                                     }];
-            [alertController addAction:action];
-
+                [weakNotif.commandDelegate sendPluginResult:result callbackId:callbackId];
+            }]];
         }
-
+        
         if ([dialogType isEqualToString:DIALOG_TYPE_PROMPT]) {
-
+            
             [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
                 if (inputStyle == (uint*)2 || inputStyle == (uint*)5) {
                     textField.keyboardType = UIKeyboardTypeNumberPad;
                 } else {
                     textField.keyboardType = UIKeyboardTypeAlphabet;
                 }
-                
+
                 textField.text = defaultText;
             }];
         }
-
-
-
-        [self.viewController presentViewController:alertController animated:YES completion:nil];
-
-    } else {
+        
+        if(!alertList)
+            alertList = [[NSMutableArray alloc] init];
+        [alertList addObject:alertController];
+        
+        if ([alertList count]==1) {
+            [self presentAlertcontroller];
+        }
+        
+    }
+    else
+    {
 #endif
+
         CDVAlertView* alertView = [[CDVAlertView alloc]
                                    initWithTitle:title
                                    message:message
                                    delegate:self
                                    cancelButtonTitle:nil
                                    otherButtonTitles:nil];
-
+        
         alertView.callbackId = callbackId;
-
-        NSUInteger count = [buttons count];
-
+        
+        
+        
         for (int n = 0; n < count; n++) {
             [alertView addButtonWithTitle:[buttons objectAtIndex:n]];
         }
-
-        if ([dialogType isEqualToString:DIALOG_TYPE_PROMPT]) {
         
-        // The view style must be assigned before we access the textfield.
-        if(inputStyle == (uint*)4 || inputStyle == (uint*)5) {
-            alertView.alertViewStyle = UIAlertViewStyleSecureTextInput;
-        } else {
+        if ([dialogType isEqualToString:DIALOG_TYPE_PROMPT]) {
             alertView.alertViewStyle = UIAlertViewStylePlainTextInput;
+            UITextField* textField = [alertView textFieldAtIndex:0];
+            if (inputStyle == (uint*)2 || inputStyle == (uint*)5) {
+                textField.keyboardType = UIKeyboardTypeNumberPad;
+            } else {
+                textField.keyboardType = UIKeyboardTypeAlphabet;
+            }
+            textField.text = defaultText;
         }
-        UITextField* textField = [alertView textFieldAtIndex:0];
-        if (inputStyle == (uint*)2 || inputStyle == (uint*)5) {
-            textField.keyboardType = UIKeyboardTypeNumberPad;
-        } else {
-            textField.keyboardType = UIKeyboardTypeAlphabet;
-        }
-
-        textField.text = defaultText;
-    }
-
+        
         [alertView show];
 #ifdef __IPHONE_8_0
     }
 #endif
-
+    
 }
 
 - (void)alert:(CDVInvokedUrlCommand*)command
@@ -180,9 +176,9 @@ static void soundCompletionCallback(SystemSoundID ssid, void* data);
     [self showDialogWithMessage:message title:title buttons:buttons defaultText:defaultText inputStyle:inputSyle callbackId:callbackId dialogType:DIALOG_TYPE_PROMPT];
 }
 
-/*
- * Callback invoked when an alert dialog's buttons are clicked.
- */
+/**
+  * Callback invoked when an alert dialog's buttons are clicked.
+  */
 - (void)alertView:(UIAlertView*)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
 {
     CDVAlertView* cdvAlertView = (CDVAlertView*)alertView;
@@ -232,6 +228,26 @@ static void soundCompletionCallback(SystemSoundID  ssid, void* data) {
     playBeep([count intValue]);
 }
 
+-(UIViewController *)getTopPresentedViewController {
+    UIViewController *presentingViewController = self.viewController;
+    while(presentingViewController.presentedViewController != nil)
+    {
+        presentingViewController = presentingViewController.presentedViewController;
+    }
+    return presentingViewController;
+}
+
+-(void)presentAlertcontroller {
+    
+    __weak CDVNotification* weakNotif = self;
+    [self.getTopPresentedViewController presentViewController:[alertList firstObject] animated:YES completion:^{
+        [alertList removeObject:[alertList firstObject]];
+        if ([alertList count]>0) {
+            [weakNotif presentAlertcontroller];
+        }
+    }];
+    
+}
 
 @end
 
