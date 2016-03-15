@@ -91,7 +91,7 @@ static NSMutableArray *alertList = nil;
                 if (inputStyle == (uint*)2 || inputStyle == (uint*)5) {
                     textField.keyboardType = UIKeyboardTypeNumberPad;
                 } else {
-                    textField.keyboardType = UIKeyboardTypeAlphabet;
+                    textField.keyboardType = UIKeyboardTypeDefault;
                 }
 
                 textField.text = defaultText;
@@ -132,7 +132,7 @@ static NSMutableArray *alertList = nil;
             if (inputStyle == (uint*)2 || inputStyle == (uint*)5) {
                 textField.keyboardType = UIKeyboardTypeNumberPad;
             } else {
-                textField.keyboardType = UIKeyboardTypeAlphabet;
+                textField.keyboardType = UIKeyboardTypeDefault;
             }
             textField.text = defaultText;
         }
