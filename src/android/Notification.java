@@ -41,6 +41,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.view.Gravity;
+import android.graphics.Color;
 
 
 /**
@@ -291,6 +292,7 @@ public class Notification extends CordovaPlugin {
                     promptInput.setFilters(new InputFilter[] {new InputFilter.LengthFilter(maxLength)});
                 }
                 promptInput.setHint(defaultText);
+                promptInput.setTextColor(Color.BLACK);
                 promptInputLayout.addView(promptInput);
 
                 AlertDialog.Builder dlg = createDialog(cordova);
