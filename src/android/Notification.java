@@ -291,7 +291,7 @@ public class Notification extends CordovaPlugin {
                 if (maxLength > 0) {
                     promptInput.setFilters(new InputFilter[] {new InputFilter.LengthFilter(maxLength)});
                 }
-                promptInput.setHint(defaultText);
+                promptInput.setText(defaultText);
                 promptInput.setTextColor(Color.BLACK);
                 promptInputLayout.addView(promptInput);
 
